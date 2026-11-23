@@ -9,7 +9,7 @@ on:
     # Blizzard publishes a new snapshot about once an hour; runs in between
     # cost one small "anything new?" request. Off the hour, as GitHub is
     # busiest (and slowest to start runs) at :00.
-    - cron: '7,27,47 * * * *'
+    - cron: '8,28,48 * * * *'
   workflow_dispatch:
     inputs:
       rebuild_static:
