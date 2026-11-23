@@ -7,7 +7,10 @@ rates and "did my auction sell?" keep updating while your PC is off.
 
 - **`.github/workflows/feed.yml`** runs `AskAH/Feed/AskAHFeed.ps1` (auction
   snapshots, sell rates, your auctions) and then `AskStatic.ps1` (Blizzard game
-  data) on a schedule. Your Blizzard API keys come from the repo secrets
+  data) every 20 minutes (`.github/feed-once.sh` is one pass). Each run does
+  passes for about 5.5 hours, then starts the next run itself, because
+  GitHub's cron schedule is unreliable; a 3-hourly cron restarts the chain if
+  it ever breaks. To stop it: cancel the running run, or disable the workflow. Your Blizzard API keys come from the repo secrets
   `BLIZZARD_CLIENT_ID` and `BLIZZARD_CLIENT_SECRET`.
 - **`data` branch**: what the feed writes (`FeedData.lua`, `BlizzData.lua`,
   `BlizzQuests.lua`), its tracking state (`state/`, `static/`) and `feed.log`.

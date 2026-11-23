@@ -2,14 +2,16 @@
 # auction house while your PC is off. Output and tracking state live on the
 # "data" branch (replaced every run, no history). Your PC's Sync.ps1 downloads
 # from there and uploads your own auctions to the "pc" branch.
+#
+# GitHub's own schedule (cron) is unreliable and on this repo never started,
+# so each run keeps itself going: it does a pass every 20 minutes for about
+# five and a half hours, then starts the next run. The cron below is only a
+# backup that restarts the chain if it ever breaks. Public repo: no cost.
 name: AH feed
 
 on:
   schedule:
-    # Blizzard publishes a new snapshot about once an hour; runs in between
-    # cost one small "anything new?" request. Off the hour, as GitHub is
-    # busiest (and slowest to start runs) at :00.
-    - cron: '8,28,48 * * * *'
+    - cron: '8 */3 * * *'
   workflow_dispatch:
     inputs:
       rebuild_static:
@@ -23,15 +25,20 @@ concurrency:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   feed:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 350
     env:
       ASKAH_CLOUD: '1'
       # sales by hour of day are counted in your time zone
       TZ: ${{ vars.TZ || 'America/New_York' }}
+      CLIENT_ID: ${{ secrets.BLIZZARD_CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.BLIZZARD_CLIENT_SECRET }}
+      REGION: ${{ vars.REGION || 'us' }}
+      GROUP: ${{ vars.FEED_GROUP }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -43,68 +50,30 @@ jobs:
           path: data
           fetch-depth: 1
 
-      - name: Get your auctions (uploaded by your PC)
+      - name: Check the Blizzard keys
         run: |
-          git -C main fetch --depth=1 origin pc && git -C main show origin/pc:mine.lua > mine.lua || rm -f mine.lua
-          if [ -s mine.lua ]; then echo "ASKAH_SV=$PWD/mine.lua" >> "$GITHUB_ENV"; fi
-
-      - name: Put back the last run's state
-        run: |
-          F=main/AskAH/Feed
-          mkdir -p $F/state $F/static
-          cp -r data/state/. $F/state/ 2>/dev/null || true
-          cp -r data/static/. $F/static/ 2>/dev/null || true
-          cp data/feed.log $F/ 2>/dev/null || true
-          for f in FeedData.lua BlizzData.lua; do cp data/$f main/AskAH/ 2>/dev/null || true; done
-          cp data/BlizzQuests.lua main/AskQuest/ 2>/dev/null || true
-
-      - name: Write config.json from the repo secrets
-        env:
-          CLIENT_ID: ${{ secrets.BLIZZARD_CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.BLIZZARD_CLIENT_SECRET }}
-          REGION: ${{ vars.REGION || 'us' }}
-          GROUP: ${{ vars.FEED_GROUP }}
-        shell: pwsh
-        run: |
-          if (-not $env:CLIENT_ID -or -not $env:CLIENT_SECRET) { throw 'Add BLIZZARD_CLIENT_ID and BLIZZARD_CLIENT_SECRET under Settings > Secrets and variables > Actions' }
-          $c = [ordered]@{ clientId = $env:CLIENT_ID; clientSecret = $env:CLIENT_SECRET; region = $env:REGION }
-          if ($env:GROUP) { $c['group'] = [int]$env:GROUP }
-          $c | ConvertTo-Json | Set-Content main/AskAH/Feed/config.json
-
-      - name: Auction feed
-        shell: pwsh
-        run: ./main/AskAH/Feed/AskAHFeed.ps1
-
-      - name: Blizzard game data
-        if: always()
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          if ('${{ inputs.rebuild_static }}' -eq 'true') { ./main/AskAH/Feed/AskStatic.ps1 -Force } else { ./main/AskAH/Feed/AskStatic.ps1 }
-
-      - name: Save to the data branch
-        if: always()
-        run: |
-          F=main/AskAH/Feed
-          rm -f $F/config.json
-          tail -n 400 $F/feed.log > data/feed.log 2>/dev/null || true
-          rm -rf data/state data/static && mkdir -p data/state data/static
-          cp -r $F/state/. data/state/ 2>/dev/null || true
-          cp -r $F/static/. data/static/ 2>/dev/null || true
-          for f in FeedData.lua BlizzData.lua; do cp main/AskAH/$f data/ 2>/dev/null || true; done
-          cp main/AskQuest/BlizzQuests.lua data/ 2>/dev/null || true
-          cd data
-          git add -A
-          # FeedData.lua gets a new timestamp every run; only publish when
-          # something real changed (a new snapshot, your auctions, game data)
-          if git diff --cached --quiet -- . ':!feed.log' ':!FeedData.lua' && \
-             [ "$(git diff --cached -U0 -- FeedData.lua | grep -c '^[-+][^-+]')" -le 2 ]; then
-            echo "Nothing new from Blizzard; not publishing."
-            exit 0
+          if [ -z "$CLIENT_ID" ] || [ -z "$CLIENT_SECRET" ]; then
+            echo "Add BLIZZARD_CLIENT_ID and BLIZZARD_CLIENT_SECRET under Settings > Secrets and variables > Actions"; exit 1
           fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git checkout -q --orphan fresh
-          git commit -q -m "Feed run $(date -u +%Y-%m-%dT%H:%MZ)"
-          for i in 1 2 3; do git push -q -f origin fresh:data && break; sleep $((i*5)); done
-          echo "Published."
+
+      - name: Feed passes every 20 minutes
+        run: |
+          start=$(date +%s)
+          rebuild='${{ inputs.rebuild_static }}'
+          n=0
+          while :; do
+            n=$((n+1)); t0=$(date +%s)
+            echo "::group::Pass $n ($(date '+%H:%M %Z'))"
+            ./main/.github/feed-once.sh "$rebuild" || echo "::warning::Pass $n: the feed reported a problem (see feed.log)"
+            echo "::endgroup::"
+            rebuild=false
+            # stop after ~5h20m so the next run can take over well before the 6h limit
+            [ $(( $(date +%s) - start )) -gt 19200 ] && break
+            sleep $(( 1200 - ( $(date +%s) - t0 ) % 1200 ))
+          done
+
+      - name: Start the next run
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run feed.yml --repo "$GITHUB_REPOSITORY" --ref main
