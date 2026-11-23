@@ -43,8 +43,10 @@ if git diff --cached --quiet -- . ':!feed.log' ':!FeedData.lua' && \
 else
   b="run$(date +%s)"
   git checkout -q --orphan "$b"
-  git commit -q -m "Feed run $(date -u +%Y-%m-%dT%H:%MZ)"
-  for i in 1 2 3; do git push -q -f origin "$b:data" && break; sleep $((i*5)); done
-  echo "Published."
+  git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+    commit -q -m "Feed run $(date -u +%Y-%m-%dT%H:%MZ)"
+  pushed=0
+  for i in 1 2 3; do git push -q -f origin "$b:data" && { pushed=1; break; }; sleep $((i*5)); done
+  if [ $pushed = 1 ]; then echo "Published."; else echo "::error::Couldn't publish to the data branch"; ok=1; fi
 fi
 exit $ok
