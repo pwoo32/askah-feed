@@ -1,0 +1,25 @@
+## Interface: 16001
+## Title: AskAH
+## Notes: Item tooltips show AH price, vendor-or-auction advice, and whether gear is an upgrade for your spec. /askah for more.
+## Author: Philip Woo
+## Version: 0.14.0
+## SavedVariables: AskAHDB
+## OptionalDeps: Pawn, AskMrRobot
+
+Knowledge.lua
+Core.lua
+Style.lua
+Data.lua
+BlizzData.lua
+Blizz.lua
+Effects.lua
+SellAdvice.lua
+Guides.lua
+Professions.lua
+Tooltip.lua
+Deals.lua
+FeedData.lua
+Feed.lua
+Sales.lua
+UI.lua
+Options.lua

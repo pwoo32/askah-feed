@@ -1,0 +1,26 @@
+## Interface: 16001
+## Title: AskQuest
+## Notes: Ask which quest is best, gives the most XP or gold, or is most popular. Rewards, worth-it verdicts, quest chains and map pins. /aq
+## Author: Philip Woo
+## Version: 0.7.3
+## SavedVariables: AskQuestDB
+## OptionalDeps: AskAH, Questie, TomTom, Pawn, AskMrRobot
+
+QuestData.lua
+BlizzQuests.lua
+Blizz.lua
+Effects.lua
+Objectives.lua
+Style.lua
+Core.lua
+Reward.lua
+Guide.lua
+Chain.lua
+UI.lua
+Hooks.lua
+QuestieTip.lua
+Coords.lua
+TrackerCoords.lua
+Transport.lua
+Minimap.lua
+Options.lua

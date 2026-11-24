@@ -1,0 +1,70 @@
+AskAH + AskQuest  --  installing on another computer
+=====================================================
+AskAH 0.14.0  /  AskQuest 0.7.3   (packaged 2026-11-24, rebuilt 05:59 UTC)
+
+These run on their own. Nothing else is needed for them to work in game.
+
+
+1. Put the addons in WoW
+------------------------
+Close WoW. Unzip this file and copy the two folders
+
+    AskAH
+    AskQuest
+
+into your WoW Forever addons folder, for example:
+
+    <your WoW folder>\_forever_\Interface\AddOns\
+
+You should end up with ...\Interface\AddOns\AskAH\AskAH.toc  (not AskAH\AskAH\...).
+If an older AskAH or AskQuest folder is already there, replace it.
+
+Start WoW. On the character screen click "AddOns" and make sure both are ticked.
+In game: /askah  and  /aq
+
+The package already includes recent auction prices and game data, so
+tooltips work right away.
+
+
+2. Keep auction prices updating (optional, Windows)
+---------------------------------------------------
+Prices are made on GitHub every 20 minutes. This step just downloads them to
+this computer in the background.
+
+    Open  AddOns\AskAH\Feed\  and double-click  Install-Sync.cmd
+
+That's it. It syncs once right away, then every 20 minutes and when you log in
+to Windows, with no windows popping up. In game, type /reload (or log in again)
+to load the newest prices.
+
+  - To stop it: double-click Remove-Sync.cmd in the same folder.
+  - To check it's working: open Feed\sync.log. You should see lines like
+    "downloaded 1 file(s) from the feed run of ...".
+  - If Windows asks about running the script, choose "Run" / "More info > Run anyway".
+
+
+3. "Did my auction sell?" tracking (optional)
+---------------------------------------------
+Downloading prices needs no password. If you also want AskAH to tell you when
+your own auctions sell while you play on THIS computer, it has to upload your
+listings to GitHub, which needs a GitHub token:
+
+  a. On github.com: Settings > Developer settings > Fine-grained tokens >
+     Generate new token. Repository access: only "askah-feed".
+     Permissions: Contents = Read and write. Copy the token.
+  b. Open AddOns\AskAH\Feed\sync.json in Notepad and paste it between the
+     quotes after "token". Save.
+  c. Run Install-Sync.cmd again.
+
+Keep that token private; don't share the sync.json file once it's filled in.
+
+
+Notes
+-----
+- Your settings (minimap button spot, options) are per computer, stored by WoW
+  in WTF\Account\...\SavedVariables\AskAH.lua and AskQuest.lua. Copy those two
+  files over too if you want the same settings.
+- Optional addons these work with: Questie, TomTom, Pawn, AskMrRobot.
+- The Feed folder also has the older "run the feed on this PC" scripts
+  (Install-Schedule.cmd, AskAHFeed.ps1). You don't need them; the GitHub feed
+  replaces them.
